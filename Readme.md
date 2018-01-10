@@ -49,6 +49,7 @@
 - [Type casting](#type-casting)
 - [Connection Flags](#connection-flags)
 - [Debugging and reporting problems](#debugging-and-reporting-problems)
+- [Security issues](#security-issues)
 - [Contributing](#contributing)
 - [Running tests](#running-tests)
 - [Todo](#todo)
@@ -247,7 +248,7 @@ it uses one of the predefined SSL profiles included. The following profiles are 
   https://s3.amazonaws.com/rds-downloads/rds-combined-ca-bundle.pem
 
 When connecting to other servers, you will need to provide an object of options, in the
-same format as [crypto.createCredentials](http://nodejs.org/api/crypto.html#crypto_crypto_createcredentials_details).
+same format as [tls.createSecureContext](https://nodejs.org/api/tls.html#tls_tls_createsecurecontext_options).
 Please note the arguments expect a string of the certificate, not a file name to the
 certificate. Here is a simple example:
 
@@ -653,6 +654,10 @@ connection.query({
 
 ## Escaping query values
 
+**Caution** These methods of escaping values only works when the
+[NO_BACKSLASH_ESCAPES](https://dev.mysql.com/doc/refman/5.7/en/sql-mode.html#sqlmode_no_backslash_escapes)
+SQL mode is disabled (which is the default state for MySQL servers).
+
 In order to avoid SQL Injection attacks, you should always escape any user
 provided data before using it inside a SQL query. You can do so using the
 `mysql.escape()`, `connection.escape()` or `pool.escape()` methods:
@@ -703,6 +708,8 @@ Different value types are escaped differently, here is how:
 * Arrays are turned into list, e.g. `['a', 'b']` turns into `'a', 'b'`
 * Nested arrays are turned into grouped lists (for bulk inserts), e.g. `[['a',
   'b'], ['c', 'd']]` turns into `('a', 'b'), ('c', 'd')`
+* Objects that have a `toSqlString` method will have `.toSqlString()` called
+  and the returned value is used as the raw SQL.
 * Objects are turned into `key = 'val'` pairs for each enumerable property on
   the object. If the property's value is a function, it is skipped; if the
   property's value is an object, toString() is called on it and the returned
@@ -712,8 +719,7 @@ Different value types are escaped differently, here is how:
   to insert them as values will trigger MySQL errors until they implement
   support.
 
-If you paid attention, you may have noticed that this escaping allows you
-to do neat things like this:
+This escaping allows you to do neat things like this:
 
 ```js
 var post  = {id: 1, title: 'Hello MySQL'};
@@ -722,7 +728,27 @@ var query = connection.query('INSERT INTO posts SET ?', post, function (error, r
   // Neat!
 });
 console.log(query.sql); // INSERT INTO posts SET `id` = 1, `title` = 'Hello MySQL'
+```
 
+And the `toSqlString` method allows you to form complex queries with functions:
+
+```js
+var CURRENT_TIMESTAMP = { toSqlString: function() { return 'CURRENT_TIMESTAMP()'; } };
+var sql = mysql.format('UPDATE posts SET modified = ? WHERE id = ?', [CURRENT_TIMESTAMP, 42]);
+console.log(sql); // UPDATE posts SET modified = CURRENT_TIMESTAMP() WHERE id = 42
+```
+
+To generate objects with a `toSqlString` method, the `mysql.raw()` method can
+be used. This creates an object that will be left un-touched when using in a `?`
+placeholder, useful for using functions as dynamic values:
+
+**Caution** The string provided to `mysql.raw()` will skip all escaping
+functions when used, so be careful when passing in unvalidated input.
+
+```js
+var CURRENT_TIMESTAMP = mysql.raw('CURRENT_TIMESTAMP()');
+var sql = mysql.format('UPDATE posts SET modified = ? WHERE id = ?', [CURRENT_TIMESTAMP, 42]);
+console.log(sql); // UPDATE posts SET modified = CURRENT_TIMESTAMP() WHERE id = 42
 ```
 
 If you feel the need to escape queries by yourself, you can also use the escaping
@@ -1385,6 +1411,22 @@ will have:
 * As much debugging output and information about your environment (mysql
   version, node version, os, etc.) as you can gather.
 
+## Security issues
+
+Security issues should not be first reported through GitHub or another public
+forum, but kept private in order for the collaborators to assess the report
+and either (a) devise a fix and plan a release date or (b) assert that is not
+not a security issues (in which case it can be posted in a public forum, like
+a GitHub issue).
+
+The primary private forum is email, either by emailing the module's author or
+opening a GitHub issue simply asking to whom a security issues should be
+addresses to without disclosing the issue or type of issue.
+
+An ideal report would include a clear indication of what the security issue is
+and how it would be exploited, ideally with an accompaning proof of concept
+("PoC") for collaborators to work again and validate potentional fixes against.
+
 ## Contributing
 
 This project welcomes contributions from the community. Contributions are
@@ -1397,7 +1439,7 @@ For a good pull request, we ask you provide the following:
 1. Try to include a clear description of your pull request in the description.
    It should include the basic "what" and "why"s for the request.
 2. The tests should pass as best as you can. See the [Running tests](#running-tests)
-   section on hwo to run the different tests. GitHub will automatically run
+   section on how to run the different tests. GitHub will automatically run
    the tests as well, to act as a safety net.
 3. The pull request should include tests for the change. A new feature should
    have tests for the new feature and bug fixes should include a test that fails
