@@ -56,6 +56,15 @@
 
 ## Install
 
+This is a [Node.js](https://nodejs.org/en/) module available through the
+[npm registry](https://www.npmjs.com/).
+
+Before installing, [download and install Node.js](https://nodejs.org/en/download/).
+Node.js 0.6 or higher is required.
+
+Installation is done using the
+[`npm install` command](https://docs.npmjs.com/getting-started/installing-npm-packages-locally):
+
 ```sh
 $ npm install mysql
 ```
@@ -1159,6 +1168,7 @@ object. Additionally they typically come with two extra properties:
 * `err.sql`: String, contains the full SQL of the failed query. This can be
   useful when using a higher level interface like an ORM that is generating
   the queries.
+* `err.sqlState`: String, contains the five-character SQLSTATE value. Only populated from [MySQL server error][].
 * `err.sqlMessage`: String, contains the message string that provides a
   textual description of the error. Only populated from [MySQL server error][].
 
@@ -1378,13 +1388,13 @@ is set to `true`:
 There are other flags available. They may or may not function, but are still
 available to specify.
 
-- COMPRESS
-- INTERACTIVE
-- NO_SCHEMA
-- PLUGIN_AUTH
-- REMEMBER_OPTIONS
-- SSL
-- SSL_VERIFY_SERVER_CERT
+- `COMPRESS`
+- `INTERACTIVE`
+- `NO_SCHEMA`
+- `PLUGIN_AUTH`
+- `REMEMBER_OPTIONS`
+- `SSL`
+- `SSL_VERIFY_SERVER_CERT`
 
 ## Debugging and reporting problems
 
@@ -1415,13 +1425,13 @@ will have:
 
 Security issues should not be first reported through GitHub or another public
 forum, but kept private in order for the collaborators to assess the report
-and either (a) devise a fix and plan a release date or (b) assert that is not
-not a security issues (in which case it can be posted in a public forum, like
+and either (a) devise a fix and plan a release date or (b) assert that it is
+not a security issue (in which case it can be posted in a public forum, like
 a GitHub issue).
 
 The primary private forum is email, either by emailing the module's author or
 opening a GitHub issue simply asking to whom a security issues should be
-addresses to without disclosing the issue or type of issue.
+addressed to without disclosing the issue or type of issue.
 
 An ideal report would include a clear indication of what the security issue is
 and how it would be exploited, ideally with an accompaning proof of concept
